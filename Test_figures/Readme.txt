@@ -1,0 +1,1 @@
+In this folder there are files of type .jpg of test images, which represent the process of creating a final figure. All these figures should not be interpreted as final results.

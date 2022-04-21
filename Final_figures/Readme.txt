@@ -1,0 +1,1 @@
+This folder includes files of type .jpg of final images, the images are present in the final document.
