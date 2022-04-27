@@ -1,4 +1,4 @@
-The Files_CSV folder includes the .VCF files for two separate disturbed landscapes. Each one counts a different number of individuals and a different number of populations of the species R_horribillis.
+The Files_CSV folder includes the .VCF files for two separate disturbed landscapes. Each one counts a different number of individuals and a different number of populations of the species *R. horribillis*.
 
 Added two named .vcf files:
 
