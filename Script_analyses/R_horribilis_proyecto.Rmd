@@ -1,0 +1,167 @@
+---
+title: "Poryecto R_horribilis, explorando datos."
+author: "Gerardo Soria Ortiz"
+date: '2022-04-27'
+output: html_document
+---
+Nota: este scrip corre debidamente cuando se establece la ruta de tabajo
+Se cargan las librerias necesarias
+```{r}
+#librerias
+library(adegenet)
+library(hierfstat)
+library(vcfR)
+library(StAMPP)
+library(Rcpp)
+library(ggplot2)
+library(LEA)
+```
+Se carga los archivos .vcf por paisaje 
+```{r}
+P1 <- read.vcfR("../Files_VCF/P1_rh_clean.vcf", verbose = FALSE)#vcf paisaje 1 (P1)
+head(P1)
+P2 <- read.vcfR("../Files_VCF/P2_rh_clean.vcf", verbose = FALSE)#vcf paisaje 2 (P2)
+#Se convierten a formato genind
+gen_P1 <- vcfR2genind(P1, return.alleles = TRUE)
+gen_P2 <- vcfR2genind(P2, return.alleles = TRUE)
+```
+Se cargan los archivos popmap por paisaje
+```{r}
+pop_data_P1 <- read.table("../Metadata/P1_popmap_ind8.txt")#P1
+pop_data_P2 <- read.table("../Metadata/P2_popmap_ind8.txt")#P2
+```
+Se agrega la informaciòn de poblaciones a los formatos genind
+```{r}
+gen_P1@pop <- as.factor(pop_data_P1$V2)#agregar informacion poblacional P1
+gen_P2@pop <- as.factor(pop_data_P2$V2)#agregar informacion poblacional P2
+```
+Detecciòn de estructura poblacional Paisaje 1
+```{r}
+#P1
+#Fst-
+P1_hier <- genind2hierfstat(gen_P1) #se comvierte a formato hierfstat la baase gen_P1
+fst_P1 <- pairwise.neifst(P1_hier, diploid = TRUE)
+fst_P1[is.na(fst_P1)] <- 0 #los valores NA se convierten a 0
+heatmap(fst_P1, symm = TRUE, main = "Paisaje 1") # se visualiza con un heatmap
+upgma_P1 <- hclust(as.dist(fst_P1), method = "average") #se visualiza con un UPGMA
+plot(upgma_P1, main = "Paisaje 1")
+
+#PCA
+P1_genl <- vcfR2genlight(P1) # se convierte la base a formato genlight
+P1_genl@pop <- as.factor(pop_data_P1$V2)#agregar informacion poblacional P1
+PCA <- glPca(P1_genl, nf = 20, scale = TRUE)#se corre el PCA
+#plot
+ggplot(data = data.frame(PCA$scores), aes(x=PC1, y=PC2, col=P1_genl@pop)) + 
+  geom_point(size = 3) +
+    ggtitle("PCA Paisaje 1") +
+    labs(col = "Poblaciones")
+
+#DAPC
+dapcP1 <- dapc(P1_genl, n.pca=15, n.da = 2)
+#plot
+scatter.dapc(dapcP1, leg=TRUE, main ="DAPC Paisaje 1")
+
+#SNMF
+p1_geno <- vcf2geno("../Files_VCF/P1_rh_clean.vcf") #ojo es la ruta del archivo
+p1_geno <- read.geno("../Files_VCF/P1_rh_clean.geno")
+project.snmf_P1 = snmf("../Files_VCF/P1_rh_clean.geno",
+                    K = 1:5, 
+                    ploidy = 2,
+                    entropy = TRUE, 
+                    repetitions = 20,
+                    alpha = 100,
+                    CPU = 4,
+                    seed=42,
+                    project = "new")
+#plot
+plot(project.snmf_P1, cex = 1.5, col = "red", pch = 19) #para elejir que k fue la menor con menor valor de entropia
+#aunque parece que una poblaciòn es la mejor, dos y tres grupos pueden ser tambien
+#revisemoslo
+ce2 <- cross.entropy(project.snmf_P1, K=2)  #k = 2
+best_2 = which.min(ce2)
+my.colors <- c("blue", "red")#colores de los dos grupos
+qmatrix2 = Q(project.snmf_P1, K = 2, run = best_2)
+barplot(t(qmatrix2), col= my.colors, 
+        border=NA, space=0, xlab="Individuals", 
+        ylab="Admixture coefficients")
+
+e3 <- cross.entropy(project.snmf_P1, K=3)   #k = 3
+best_3 = which.min(ce3)
+my.colors <- c("blue", "red", "green3")#colores de los dos grupos
+qmatrix3 = Q(project.snmf_P1, K = 3, run = best_3)
+barplot(t(qmatrix3), col= my.colors_3, 
+        border=NA, space=0, xlab="Individuals", 
+        ylab="Admixture coefficients")
+```
+Detecciòn de estructura paisaje 2
+
+```{r}
+#P1
+#Fst-
+P2_hier <- genind2hierfstat(gen_P2) #se comvierte a formato hierfstat la baase gen_P2
+fst_P2 <- pairwise.neifst(P2_hier, diploid = TRUE)
+fst_P2[is.na(fst_P2)] <- 0 #los valores NA se convierten a 0
+heatmap(fst_P2, symm = TRUE, main = "Paisaje 2") # se visualiza con un heatmap
+upgma_P2 <- hclust(as.dist(fst_P2), method = "average") #se visualiza con un UPGMA
+plot(upgma_P2, main = "Paisaje 2")
+
+#PCA
+P2_genl <- vcfR2genlight(P2) # se convierte la base a formato genlight
+P2_genl@pop <- as.factor(pop_data_P2$V2)#agregar informacion poblacional P2
+PCA_P2 <- glPca(P2_genl, nf = 20, scale = TRUE)#se corre el PCA
+#plot
+ggplot(data = data.frame(PCA_P2$scores), aes(x=PC1, y=PC2, col=P2_genl@pop)) + 
+  geom_point(size = 3) +
+    ggtitle("PCA Paisaje 2") +
+    labs(col = "Poblaciones")
+
+#DAPC
+dapcP2 <- dapc(P2_genl, n.pca=15, n.da = 2)
+#plot
+scatter.dapc(dapcP2, leg=TRUE, main ="DAPC Paisaje 2")
+
+#SNMF
+p2_geno <- vcf2geno("../Files_VCF/P2_rh_clean.vcf") #ojo es la ruta del archivo
+p2_geno <- read.geno("../Files_VCF/P2_rh_clean.geno")
+project.snmf_P2 = snmf("../Files_VCF/P2_rh_clean.geno",
+                    K = 1:5, 
+                    ploidy = 2,
+                    entropy = TRUE, 
+                    repetitions = 20,
+                    alpha = 100,
+                    CPU = 4,
+                    seed=23,
+                    project = "new")
+#plot
+plot(project.snmf_P2, cex = 1.5, col = "red", pch = 19) #para elejir que k fue la menor con menor valor de entropia
+#aunque parece que una poblaciòn es la mejor, dos y tres grupos pueden ser tambien
+#revisemoslo
+ce2_P2 <- cross.entropy(project.snmf_P2, K=2)  #k = 2
+best_2_P2 = which.min(ce2_P2)
+my.colors <- c("blue", "red")#colores de los dos grupos
+qmatrix2_P2 = Q(project.snmf_P2, K = 2, run = best_2_P2)
+barplot(t(qmatrix2_P2), col= my.colors, 
+        border=NA, space=0, xlab="Individuals", 
+        ylab="Admixture coefficients")
+
+ce3_P2 <- cross.entropy(project.snmf_P2, K=3)   #k = 3
+best_3_P2 = which.min(ce3_P2)
+my.colors_3 <- c("blue", "red", "green3")#colores de los dos grupos
+qmatrix3_P2 = Q(project.snmf_P2, K = 3, run = best_3_P2)
+barplot(t(qmatrix3_P2), col= my.colors_3, 
+        border=NA, space=0, xlab="Individuals", 
+        ylab="Admixture coefficients")
+
+```
+En ambos paisajes parece haber dos grupos geneticos
+P1: Dos poblaciones del norte ZA y el resto
+P1: Dos poblaciones del sur SA y el resto
+
+Ahora veremos si existe algun tipo de estructura ambiental con las variables medidas in situ
+```{r}
+
+```
+
+
+
+
